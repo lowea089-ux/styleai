@@ -1,0 +1,32 @@
+# Render Blueprint: Render → "New" → "Blueprint" → dieses Repository wählen.
+# Legt einen Web-Service mit dauerhaftem Speicher für Datenbank und Fotos an.
+services:
+  - type: web
+    name: styleai
+    runtime: node
+    # Ein dauerhafter Speicher (disk) braucht einen bezahlten Plan; ohne ihn gingen Daten bei jedem Neustart verloren.
+    plan: starter
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: styleai-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      # Der Server braucht kein Electron; spart beim Bauen den großen Download.
+      - key: ELECTRON_SKIP_BINARY_DOWNLOAD
+        value: "1"
+      - key: DATA_DIR
+        value: /var/data
+      # Verschlüsselt gespeicherte API-Schlüssel; Render erzeugt einen zufälligen Wert.
+      - key: SESSION_SECRET
+        generateValue: true
+      # Öffentliche Adresse der App, z. B. https://styleai.onrender.com (wird beim Einrichten abgefragt).
+      - key: APP_ORIGIN
+        sync: false
+      # Einladungscode: nur wer ihn kennt, kann ein Konto anlegen (wird beim Einrichten abgefragt).
+      - key: REGISTRATION_CODE
+        sync: false

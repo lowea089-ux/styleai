@@ -1,0 +1,26 @@
+# Lokale Daten: Datenbank, Fotos und Verschlüsselungsschlüssel (.secret) – niemals hochladen
+data
+
+# Schlüssel und Passwörter
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Abhängigkeiten und Build-Ergebnisse
+node_modules
+dist
+dist-desktop
+release
+build/icon.png
+coverage
+*.tsbuildinfo
+*.log
+
+# Lokale Werkzeug- und System-Dateien
+.claude
+.vscode
+.idea
+.DS_Store
+Thumbs.db
