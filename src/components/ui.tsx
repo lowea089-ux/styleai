@@ -290,8 +290,8 @@ export function EmptyState({ icon, title, children, action }: { icon?: ReactNode
   );
 }
 
-export function Card({ children, className, flush }: { children: ReactNode; className?: string; flush?: boolean }) {
-  return <div className={clsx("rounded-3xl border border-line bg-surface shadow-card", flush ? "overflow-hidden" : "p-5", className)}>{children}</div>;
+export function Card({ children, className, flush, id }: { children: ReactNode; className?: string; flush?: boolean; id?: string }) {
+  return <div id={id} className={clsx("rounded-3xl border border-line bg-surface shadow-card", flush ? "overflow-hidden" : "p-5", className)}>{children}</div>;
 }
 
 export function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {

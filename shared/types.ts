@@ -236,6 +236,8 @@ export interface Capabilities {
   limits: { maxUploadMb: number };
   /** Registration needs an invite code (REGISTRATION_CODE). */
   registration: { codeRequired: boolean };
+  /** Browser edition: data lives only in this browser, no accounts, backup via file. */
+  local: boolean;
 }
 
 export interface ApiErrorBody {

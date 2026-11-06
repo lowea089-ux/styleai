@@ -19,6 +19,8 @@ export interface Deps {
   outfits: OutfitService;
   weather: WeatherService;
   fetchImpl?: typeof fetch;
+  /** Browser edition: one person per browser, no sign-in. Returns (and if needed creates) that local user. */
+  localUser?: () => UserRow;
 }
 
 export type AppEnv = { Variables: { user: UserRow } };
@@ -70,10 +72,14 @@ export { ZodError };
 export function requireAuth(deps: Deps): MiddlewareHandler<AppEnv> {
   const name = sessionCookieName(secureCookies(deps.cfg));
   return async (c, next) => {
+    if (deps.localUser) {
+      c.set("user", deps.localUser());
+      return next();
+    }
     const token = getCookie(c, name);
     const user = token ? getSessionUser(deps.db, hashToken(token)) : undefined;
     if (!user) {
-      if (token) deleteCookie(c, name, { path: "/" });
+      if (token) deleteCookie(c, name, { path: "/", secure: secureCookies(deps.cfg) });
       return c.json(errorBody("UNAUTHORIZED", "Bitte melde dich an."), 401);
     }
     c.set("user", user);

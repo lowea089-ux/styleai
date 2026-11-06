@@ -14,7 +14,9 @@ export class AnthropicProvider extends BaseProvider {
   constructor(apiKey: string, visionModel: string, textModel: string, timeoutMs: number, opts: { fetch?: typeof fetch; maxRetries?: number } = {}) {
     super(visionModel, textModel);
     // The SDK retries 408/409/429/5xx and connection errors with exponential backoff.
-    this.client = new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: opts.maxRetries ?? 2, fetch: opts.fetch });
+    // The browser edition calls the API from the service worker with the user's own key on their own device.
+    const browserEdition = (globalThis as { STYLEAI_WEB?: boolean }).STYLEAI_WEB === true;
+    this.client = new Anthropic({ apiKey, timeout: timeoutMs, maxRetries: opts.maxRetries ?? 2, fetch: opts.fetch, dangerouslyAllowBrowser: browserEdition });
   }
 
   protected async complete(req: CompletionRequest): Promise<Completion> {

@@ -11,6 +11,7 @@ data
 # Abhängigkeiten und Build-Ergebnisse
 node_modules
 dist
+dist-web
 dist-desktop
 release
 build/icon.png

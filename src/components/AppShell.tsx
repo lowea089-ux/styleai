@@ -3,6 +3,7 @@ import { CalendarDays, Home, Layers, Sparkles, Shirt, UserRound } from "lucide-r
 import { useEffect } from "react";
 import { Navigate, NavLink, Outlet, useLocation } from "react-router";
 import { BRAND } from "../brand";
+import { LOCAL_EDITION } from "../lib/edition";
 import { usePreferences, useMe } from "../lib/queries";
 import { applyTheme } from "../lib/theme";
 import { StylistSheet, stylistStore } from "./StylistSheet";
@@ -44,8 +45,15 @@ export function AppShell() {
   if (me.isError) {
     return (
       <div className="flex min-h-dvh items-center justify-center p-6">
-        <EmptyState title="Server nicht erreichbar" action={<Button onClick={() => me.refetch()} loading={me.isFetching}>Erneut versuchen</Button>}>
-          Die App kann gerade keine Verbindung zum Server herstellen. Deine Daten sind sicher gespeichert.
+        <EmptyState
+          title={LOCAL_EDITION ? "Daten nicht lesbar" : "Server nicht erreichbar"}
+          action={
+            <Button onClick={() => me.refetch()} loading={me.isFetching}>
+              Erneut versuchen
+            </Button>
+          }
+        >
+          {LOCAL_EDITION ? me.error.message : "Die App kann gerade keine Verbindung zum Server herstellen. Deine Daten sind sicher gespeichert."}
         </EmptyState>
       </div>
     );

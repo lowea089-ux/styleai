@@ -537,6 +537,25 @@ describe("account deletion", () => {
     const again = new Client(app);
     expect((await again.json("POST", "/api/auth/login", { email: "weg@example.test", password: "sicheres-passwort-123" })).status).toBe(401);
   });
+
+  it("clears the __Host- session cookie in production (logout and deletion)", async () => {
+    const { app } = setup({ cfg: { production: true } });
+    const headers = { origin: ORIGIN, "content-type": "application/json" };
+    const signUp = async (email: string) => {
+      const r = await app.request(`${ORIGIN}/api/auth/register`, { method: "POST", headers, body: JSON.stringify({ email, password: "sicheres-passwort-123", displayName: "P" }) });
+      expect(r.status).toBe(201);
+      return `__Host-styleai_session=${r.headers.get("set-cookie")!.match(/__Host-styleai_session=([^;]+)/)![1]}`;
+    };
+    const out = await app.request(`${ORIGIN}/api/auth/logout`, { method: "POST", headers: { ...headers, cookie: await signUp("prod1@example.test") } });
+    expect(out.status).toBe(200);
+    expect(out.headers.get("set-cookie")).toMatch(/__Host-styleai_session=;.*Secure/i);
+    const del = await app.request(`${ORIGIN}/api/account`, {
+      method: "DELETE",
+      headers: { ...headers, cookie: await signUp("prod2@example.test") },
+      body: JSON.stringify({ password: "sicheres-passwort-123" }),
+    });
+    expect(del.status).toBe(200);
+  });
 });
 
 afterAll(() => {

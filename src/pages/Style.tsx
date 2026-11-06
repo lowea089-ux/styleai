@@ -7,11 +7,14 @@ import { GROUPS, OCCASIONS, STYLES, labelOf, type GroupId, type Slot } from "../
 import type { Category, StylePreferences } from "../../shared/types";
 import { AiConsentSheet } from "../components/AiConsent";
 import { AiProviderSettings } from "../components/AiProviderSettings";
+import { BackupSection } from "../components/BackupSection";
 import { TryonSettings } from "../components/TryonSettings";
 import { ItemImage, useItemMap } from "../components/garments";
 import { LocationSheet } from "../components/WeatherPanel";
 import { Badge, Button, Card, Chip, ConfirmDialog, Field, Input, Notice, Segmented, Select, Sheet, Skeleton, Slider, Toggle, useToast } from "../components/ui";
 import { api, errorMessage } from "../lib/api";
+import { downloadFrom } from "../lib/download";
+import { LOCAL_EDITION } from "../lib/edition";
 import { qk, useAiStatus, useCategories, useLearned, useMe, usePreferences } from "../lib/queries";
 import { applyTheme } from "../lib/theme";
 
@@ -43,12 +46,14 @@ export function StylePage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="eyebrow mb-1">{me.data?.email}</div>
+          <div className="eyebrow mb-1">{LOCAL_EDITION ? "Gespeichert auf diesem Gerät" : me.data?.email}</div>
           <h1 className="font-display text-4xl leading-none md:text-5xl">Mein Stil</h1>
         </div>
-        <Button variant="outline" onClick={logout} icon={<LogOut className="size-4" />}>
-          Abmelden
-        </Button>
+        {!LOCAL_EDITION && (
+          <Button variant="outline" onClick={logout} icon={<LogOut className="size-4" />}>
+            Abmelden
+          </Button>
+        )}
       </div>
       {prefs.isLoading && <Skeleton className="h-96" />}
       {prefs.data && <ProfileSection prefs={prefs.data} onSaved={() => toast("Stilprofil gespeichert")} />}
@@ -66,6 +71,7 @@ export function StylePage() {
       {prefs.data && <SettingsSection prefs={prefs.data} />}
       <AiProviderSettings />
       <TryonSettings />
+      {LOCAL_EDITION && <BackupSection />}
       <PrivacySection />
     </div>
   );
@@ -566,20 +572,28 @@ function PrivacySection() {
           )}
         </div>
         <ul className="list-disc space-y-1 pl-5 text-muted">
-          <li>Fotos werden privat gespeichert und nur nach Anmeldung an dich ausgeliefert.</li>
+          {LOCAL_EDITION ? (
+            <li>Alle Daten und Fotos bleiben in diesem Browser auf deinem Gerät – es gibt keinen StyleAI-Server und kein Konto.</li>
+          ) : (
+            <li>Fotos werden privat gespeichert und nur nach Anmeldung an dich ausgeliefert.</li>
+          )}
           <li>Beim Speichern werden Bilder neu kodiert – Metadaten wie GPS-Position werden entfernt.</li>
           <li>Freistellung und Farberkennung laufen in deinem Browser.</li>
           <li>Wetter: Es wird nur ein auf ca. 1 km gerundeter Ort an Open-Meteo übermittelt.</li>
         </ul>
         <div className="flex flex-wrap gap-2">
-          <a href="/api/account/export" download className="inline-flex h-10 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium hover:bg-surface-2">
-            <Download className="size-4" /> Daten exportieren (JSON)
-          </a>
+          <Button
+            variant="outline"
+            onClick={() => downloadFrom("/api/account/export", "styleai-export.json").catch((e) => toast(errorMessage(e), "danger"))}
+            icon={<Download className="size-4" />}
+          >
+            Daten exportieren (JSON)
+          </Button>
           <Button variant="outline" onClick={() => setDeleteAll(true)} icon={<Trash2 className="size-4" />}>
             Alle Kleidungsstücke löschen
           </Button>
           <Button variant="danger" onClick={() => setDeleteAccount(true)}>
-            Konto löschen
+            {LOCAL_EDITION ? "Alle Daten löschen" : "Konto löschen"}
           </Button>
         </div>
       </div>
@@ -610,13 +624,20 @@ function PrivacySection() {
       <ConfirmDialog
         open={deleteAccount}
         onOpenChange={setDeleteAccount}
-        title="Konto endgültig löschen?"
-        confirmLabel="Konto löschen"
+        title={LOCAL_EDITION ? "Alle Daten in diesem Browser löschen?" : "Konto endgültig löschen?"}
+        confirmLabel={LOCAL_EDITION ? "Alles löschen" : "Konto löschen"}
         danger
         loading={busy}
         onConfirm={async () => {
           setBusy(true);
           try {
+            if (LOCAL_EDITION) {
+              await api.del("/api/account");
+              setDeleteAccount(false);
+              qc.clear();
+              nav("/", { replace: true });
+              return;
+            }
             await api.del("/api/account", { password });
             qc.clear();
             qc.setQueryData(qk.me, null);
@@ -628,10 +649,19 @@ function PrivacySection() {
           }
         }}
       >
-        <p>Konto, Kleidungsstücke, Bilder, Outfits, Kalender und gelernte Vorlieben werden unwiderruflich gelöscht.</p>
-        <Field label="Passwort zur Bestätigung" htmlFor="del-pw">
-          <Input id="del-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
+        {LOCAL_EDITION ? (
+          <p>
+            Kleidungsstücke, Fotos, Outfits, Kalender, Stilprofil und gespeicherte Schlüssel werden unwiderruflich gelöscht. Lade vorher eine Sicherung herunter, wenn du sie
+            behalten willst.
+          </p>
+        ) : (
+          <>
+            <p>Konto, Kleidungsstücke, Bilder, Outfits, Kalender und gelernte Vorlieben werden unwiderruflich gelöscht.</p>
+            <Field label="Passwort zur Bestätigung" htmlFor="del-pw">
+              <Input id="del-pw" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </Field>
+          </>
+        )}
       </ConfirmDialog>
     </Card>
   );

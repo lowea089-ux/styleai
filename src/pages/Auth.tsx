@@ -6,6 +6,7 @@ import { Logo } from "../components/AppShell";
 import { Button, Field, Input, Notice } from "../components/ui";
 import { BRAND } from "../brand";
 import { api, errorMessage } from "../lib/api";
+import { LOCAL_EDITION } from "../lib/edition";
 import { qk, useCapabilities, useMe } from "../lib/queries";
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
@@ -22,7 +23,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (me.data) return <Navigate to="/" replace />;
+  // The browser edition has no accounts: whoever uses this browser owns its data.
+  if (me.data || LOCAL_EDITION) return <Navigate to="/" replace />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

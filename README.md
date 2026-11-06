@@ -39,6 +39,8 @@ Anmeldung danach mit `demo@styleai.test` / `styleai-demo-2026` (nur für die lok
 | `npm run typecheck` | TypeScript-Prüfung für Frontend, Server, Tests |
 | `npm run build` | Typecheck + Produktions-Build des Frontends nach `dist/` |
 | `npm start` | Produktionsserver: liefert App und API aus einem Prozess aus |
+| `npm run build:web` | Browser-Version ohne Server nach `dist-web/` bauen (für GitHub Pages) |
+| `npm run preview:web` | Gebaute Browser-Version lokal ansehen: <http://localhost:4174/styleai/> |
 | `npm run seed:demo` | Demo-Konto mit Beispieldaten anlegen |
 | `npm run desktop:build` | Windows-App als einzelne portable `.exe` nach `release/` bauen |
 | `npm run desktop:installer` | Windows-Installer (`…-setup.exe`) nach `release/` bauen |
@@ -66,10 +68,34 @@ Unter **Mein Stil → KI-Anbieter** wählt jede Person ihren Anbieter und fügt 
 Alle Anbieter liefern dieselben strukturierten Daten; die Antworten werden mit denselben Schemas geprüft. Groq fällt
 automatisch auf den JSON-Modus zurück, wenn ein Modell keine strikten Schemas unterstützt.
 
-## Als Web-App betreiben (Render)
+## Browser-Version: kostenlos auf GitHub Pages, offline nutzbar
 
-GitHub speichert nur den Code; die App braucht einen Server mit dauerhaftem Speicher. Das Repository enthält dafür
-eine Render-Konfiguration (`render.yaml`):
+Die Browser-Version braucht keinen Server: Der komplette StyleAI-Server läuft in einem Service Worker im Browser
+(Datenbank: SQLite als WebAssembly über sql.js; Datenbank-Datei und Fotos in IndexedDB). Nach dem ersten Öffnen
+startet die App auch ohne Internet. Es gibt keine Konten – jeder Browser hat seinen eigenen Kleiderschrank.
+
+Veröffentlichen (einmalig):
+
+1. GitHub Pages ist mit einem kostenlosen GitHub-Konto nur für **öffentliche** Repositories verfügbar
+   (privat nur mit einem bezahlten Plan). Sensible Daten liegen nicht im Repository (siehe `.gitignore`).
+2. Repository → **Settings → Pages → Source: „GitHub Actions“**.
+3. Jeder Push auf `main` baut und veröffentlicht die App (`.github/workflows/pages.yml`, mit Typecheck und Tests).
+   Adresse: `https://<konto>.github.io/<repository>/`
+
+Am Handy: Adresse öffnen → „Zum Home-Bildschirm“. Unter **Mein Stil → Sicherung** lässt sich alles als ZIP-Datei
+sichern und wiederherstellen (z. B. für ein neues Gerät); gespeicherte API-Schlüssel sind darin absichtlich nicht
+enthalten. KI-Funktionen sind optional und rufen den gewählten Anbieter direkt aus dem Browser mit dem eigenen
+Schlüssel auf.
+
+Unterschiede zur Server-Version: kein Konto und kein Abgleich zwischen Geräten; die Daten gehen verloren, wenn die
+Browserdaten der Seite gelöscht werden (deshalb Sicherungen); Safari löscht Daten von Websites, die 7 Tage nicht
+geöffnet wurden – als Home-Bildschirm-App gilt das nicht. Profi-Freistellung (Photoroom/remove.bg) gibt es nur mit
+Server. Der Decart-Schlüssel wird nicht vorab geprüft und geht direkt an die Seite, weil kein Server ihn verbergen kann.
+
+## Als Web-App mit Server betreiben (Render)
+
+Für mehrere Personen mit Konten und Daten auf einem Server. Die App braucht dafür einen Server mit dauerhaftem
+Speicher. Das Repository enthält eine Render-Konfiguration (`render.yaml`):
 
 1. Bei <https://render.com> ein Konto anlegen und GitHub verbinden (Zugriff auf dieses Repository erlauben).
 2. **New → Blueprint** → dieses Repository wählen. Render legt den Dienst „styleai“ mit 1 GB Speicher an
@@ -203,7 +229,12 @@ Kleiderschrank und auf der Detailseite eines Teils); beide Wege unten funktionie
 npm test
 ```
 
-134 automatisierte Tests in 10 Dateien (Stand der letzten Ausführung: alle bestanden):
+142 automatisierte Tests in 11 Dateien (Stand der letzten Ausführung: alle bestanden):
+
+* `tests/web-runtime.test.ts` – Browser-Version: sql.js-Adapter verhält sich wie `node:sqlite` (Parameter,
+  Transaktionen, Statements nach dem Speichern), Ersatz für `node:crypto` liefert dieselben Ergebnisse wie Node
+  (SHA-256, AES-256-GCM, scrypt), ein lokaler Nutzer ohne Anmeldung, Teile mit Fotos, Outfits, Daten nach einem
+  Neustart noch da, Sicherung ohne API-Schlüssel und Wiederherstellung in einem leeren Browser, „Alle Daten löschen“
 
 * `tests/tryon-api.test.ts` – realistische Anprobe gegen einen simulierten Decart-Endpunkt: ohne Schlüssel nicht
   verfügbar, Einwilligung nötig, Schlüssel wird vor dem Speichern geprüft und verschlüsselt abgelegt, Tokens mit
@@ -240,6 +271,9 @@ Zusätzlich manuell im Browser geprüft (Desktop und 375 px Mobil, Hell/Dunkel):
 Kleiderschrank, Upload mit Freistellung, Generator, Austausch, „Heute getragen“, Kalenderplanung, Stylist, Trends, Mein Stil.
 Live-Anprobe im Foto-Modus mit einem Testfoto (Ganzkörper, ausgestreckte Arme, Ausfallschritt) und den Demo-Outfits,
 Lichtkorrektur-Schalter mit einem dunklen, gelbstichigen Testfoto, MediaPipe-Start im Produktions-Build mit CSP.
+Browser-Version im gebauten Zustand (Chromium): Start ohne Anmeldung, Foto-Upload mit Umkodierung im Service Worker,
+Kleiderschrank, Sicherung herunterladen und wiederherstellen, Daten nach Neuregistrierung des Service Workers, und
+bei gestopptem Server (offline): App, alle 51 vorab gespeicherten Dateien, Outfit-Generator, Trends.
 
 **Nicht getestet:** die realistische Anprobe mit einer echten Decart-Verbindung (kein Decart-Schlüssel vorhanden;
 geprüft sind Server-Anbindung gegen simulierte Antworten, Einwilligung, Fenster mit Körper-Umriss und
@@ -255,6 +289,8 @@ Fehlerpfad mit einem absichtlich ungültigen Schlüssel geprüft), echte iPhone-
   (<https://github.com/google-ai-edge/mediapipe>)
 * `@decartai/sdk`: Decart, MIT-Lizenz; die realistische Anprobe nutzt die kostenpflichtige Decart-API
 * Schriften Fraunces und Inter (`@fontsource-variable`): SIL Open Font License
+* Browser-Version: `sql.js` (SQLite als WebAssembly, MIT; SQLite selbst ist gemeinfrei), `fflate` (MIT),
+  `buffer` (MIT), `@noble/hashes` und `@noble/ciphers` (MIT)
 
 ## Bekannte Grenzen
 

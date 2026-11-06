@@ -8,6 +8,7 @@ import { createBrowserRouter, RouterProvider } from "react-router";
 import { AppShell } from "./components/AppShell";
 import { ToastProvider } from "./components/ui";
 import { ApiError, setUnauthorizedHandler } from "./lib/api";
+import { LOCAL_EDITION, startLocalEdition } from "./lib/edition";
 import { qk } from "./lib/queries";
 import { applyTheme, initialTheme, watchSystemTheme } from "./lib/theme";
 import { AuthPage } from "./pages/Auth";
@@ -32,7 +33,7 @@ const queryClient = new QueryClient({
 });
 setUnauthorizedHandler(() => queryClient.setQueryData(qk.me, null));
 
-const router = createBrowserRouter([
+const routes = [
   { path: "/login", element: <AuthPage mode="login" /> },
   { path: "/register", element: <AuthPage mode="register" /> },
   {
@@ -52,14 +53,47 @@ const router = createBrowserRouter([
       { path: "*", element: <NotFoundPage /> },
     ],
   },
-]);
+];
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
-    </QueryClientProvider>
-  </StrictMode>,
-);
+const root = createRoot(document.getElementById("root")!);
+
+function renderApp() {
+  // The browser edition lives in a sub-folder (e.g. /styleai/ on GitHub Pages).
+  const router = createBrowserRouter(routes, { basename: import.meta.env.BASE_URL.replace(/\/$/, "") || "/" });
+  root.render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+}
+
+if (LOCAL_EDITION) {
+  root.render(<BootScreen />);
+  startLocalEdition().then(renderApp, (e: Error) => root.render(<BootScreen error={e.message} />));
+} else {
+  renderApp();
+}
+
+function BootScreen({ error }: { error?: string }) {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
+      <span className="font-display text-[26px] font-semibold tracking-tight">
+        Style<span className="text-accent">AI</span>
+      </span>
+      {error ? (
+        <>
+          <p className="max-w-sm text-sm text-muted">{error}</p>
+          <button type="button" onClick={() => window.location.reload()} className="h-10 rounded-full bg-ink px-5 text-sm font-medium text-paper">
+            Neu laden
+          </button>
+        </>
+      ) : (
+        <p className="text-sm text-muted">Wird gestartet …</p>
+      )}
+    </div>
+  );
+}

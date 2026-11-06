@@ -123,6 +123,7 @@ export function createApp(deps: Deps, opts: { serveClient?: boolean } = {}) {
       weather: { provider: "Open-Meteo", attribution: "Wetterdaten von Open-Meteo.com (CC BY 4.0)", attributionUrl: "https://open-meteo.com/" },
       limits: { maxUploadMb: Math.round(cfg.maxUploadBytes / 1024 / 1024) },
       registration: { codeRequired: !!cfg.registrationCode },
+      local: !!deps.localUser,
     };
     return c.json(caps);
   });

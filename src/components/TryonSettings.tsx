@@ -5,6 +5,7 @@ import type { TryonStatus } from "../../shared/types";
 import { api, errorMessage } from "../lib/api";
 import { qk, useTryonStatus } from "../lib/queries";
 import { Badge, Button, Card, Field, Input, Notice, Skeleton, Slider, useToast } from "./ui";
+import { LOCAL_EDITION } from "../lib/edition";
 
 /** Decart key, session length and camera consent for the realistic live try-on. */
 export function TryonSettings() {
@@ -89,7 +90,11 @@ export function TryonSettings() {
               Schlüssel erstellen <ExternalLink className="size-3" />
             </a>
           }
-          hint="Wird geprüft, verschlüsselt gespeichert und danach nie wieder angezeigt. Der Browser bekommt nur kurzlebige Zugangs-Tokens."
+          hint={
+            LOCAL_EDITION
+              ? "Wird verschlüsselt nur in diesem Browser gespeichert und danach nie wieder angezeigt."
+              : "Wird geprüft, verschlüsselt gespeichert und danach nie wieder angezeigt. Der Browser bekommt nur kurzlebige Zugangs-Tokens."
+          }
         >
           <div className="relative">
             <KeyRound className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />

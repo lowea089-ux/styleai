@@ -54,7 +54,7 @@ export function authRoutes(deps: Deps) {
   app.post("/logout", (c) => {
     const token = getCookie(c, cookie);
     if (token) repo.deleteSession(deps.db, hashToken(token));
-    deleteCookie(c, cookie, { path: "/" });
+    deleteCookie(c, cookie, { path: "/", secure: secureCookies(deps.cfg) });
     return c.json({ ok: true });
   });
 
@@ -79,12 +79,15 @@ export function accountRoutes(deps: Deps) {
   });
 
   app.delete("/", async (c) => {
-    const { password } = await readJson(c, z.object({ password: z.string().min(1).max(200) }));
     const user = c.get("user");
-    if (!(await verifyPassword(password, user.password_hash))) throw new HttpError(403, "INVALID_PASSWORD", "Das Passwort ist falsch.");
+    // Browser edition: there is no password; whoever holds the device owns the data (like clearing site data).
+    if (!deps.localUser) {
+      const { password } = await readJson(c, z.object({ password: z.string().min(1).max(200) }));
+      if (!(await verifyPassword(password, user.password_hash))) throw new HttpError(403, "INVALID_PASSWORD", "Das Passwort ist falsch.");
+    }
     repo.deleteUser(deps.db, user.id);
     await deps.images.removeUser(user.id);
-    deleteCookie(c, cookie, { path: "/" });
+    deleteCookie(c, cookie, { path: "/", secure: secureCookies(deps.cfg) });
     return c.json({ ok: true });
   });
 

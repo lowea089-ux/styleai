@@ -177,6 +177,28 @@ Berechtigungen werden nur Geolocation (Wetter) und die Kamera ohne Mikrofon (Liv
 zu `dist-desktop/main.cjs`; nur `sharp` (native Bibliothek) bleibt extern und wird von electron-builder aus dem
 asar-Archiv entpackt. SQLite kommt aus Electrons eingebautem Node 24 (`node:sqlite`).
 
+## Browser-Version (`web/`, GitHub Pages)
+
+Dieselbe Server-Anwendung läuft ohne Server in einem Service Worker (`web/sw.ts`). Er beantwortet alle `/api/*`-
+Anfragen der eigenen Seite mit der Hono-App aus `server/app.ts`; Navigationen auf API-Adressen werden nie an die App
+weitergereicht (Schutz vor Formularen fremder Seiten). Ersetzt werden nur die Node-spezifischen Teile:
+
+| Server | Browser-Version |
+|---|---|
+| `node:sqlite` (`server/db.ts`) | sql.js (SQLite als WebAssembly) hinter einer `node:sqlite`-kompatiblen Fassade (`web/sqljs-db.ts`); die Datenbankdatei liegt in IndexedDB und wird nach jeder schreibenden Anfrage gespeichert |
+| Dateien unter `DATA_DIR/uploads` (`server/images.ts`) | IndexedDB; Umkodierung mit `createImageBitmap` und `OffscreenCanvas` statt sharp (Metadaten fallen ebenso weg) |
+| `node:crypto` | Web Crypto + `@noble/hashes`/`@noble/ciphers` (`web/shims/crypto.ts`, gegen Node getestet) |
+| Konten, Sitzungen | `Deps.localUser`: ein lokaler Nutzer pro Browser, keine Anmeldung |
+| Decart-Token (`server/tryon.ts`) | der eigene Schlüssel geht direkt an die Seite (kein Server, der ihn verbergen könnte) |
+
+Migrationen und Transaktionen liegen laufzeitunabhängig in `server/migrations.ts`. `scripts/build-web.mjs` baut die
+App mit Vite (Modus `web`, Basis-Pfad aus `WEB_BASE`) und den Service Worker mit esbuild, das die Module oben
+austauscht. Offline: Alle App-Dateien bis 2,5 MB werden bei der Installation zwischengespeichert, Pose-Modell und
+MediaPipe-WASM beim ersten Gebrauch. Eine neue Version löscht den alten Zwischenspeicher; eine noch offene alte Seite
+lädt sich neu, sobald ein nachgeladener Teil fehlt. Sicherung: ZIP mit Datenbank (ohne API-Schlüssel und Sitzungen)
+und Fotos (`web/backup.ts`); die Wiederherstellung prüft Format, Version und Integrität und ersetzt Datenbank und
+Fotos in einer IndexedDB-Transaktion.
+
 ## Bereitstellung
 
 1. `npm ci && npm run build`
